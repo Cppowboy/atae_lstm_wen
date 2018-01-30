@@ -1,16 +1,19 @@
 import numpy as np
 import theano
 
+
 class Sentence(object):
     """docstring for sentence"""
+
     def __init__(self, content, target, rating, grained):
         self.content, self.target = content.lower(), target
         self.solution = np.zeros(grained, dtype=theano.config.floatX)
         self.senlength = len(self.content.split(' '))
         try:
-            self.solution[int(rating)+1] = 1
+            self.solution[int(rating) + 1] = 1
         except:
             exit()
+
     def stat(self, target_dict, wordlist, grained=3):
         data, data_target, i = [], [], 0
         solution = np.zeros((self.senlength, grained), dtype=theano.config.floatX)
@@ -18,15 +21,18 @@ class Sentence(object):
             data.append(wordlist[word])
             try:
                 pol = Lexicons_dict[word]
-                solution[i][pol+1] = 1
+                solution[i][pol + 1] = 1
             except:
                 pass
-            i = i+1
+            i = i + 1
         for word in self.target.split(' '):
             data_target.append(wordlist[word])
-        return {'seqs': data, 'target': data_target, 'solution': np.array([self.solution]), 'target_index': self.get_target(target_dict)}
+        return {'seqs': data, 'target': data_target, 'solution': np.array([self.solution]),
+                'target_index': self.get_target(target_dict)}
+
     def get_target(self, dict_target):
         return dict_target[self.target]
+
 
 class DataManager(object):
     def __init__(self, dataset, grained=3):
@@ -36,8 +42,9 @@ class DataManager(object):
             data = []
             with open('%s/%s.cor' % (dataset, fname)) as f:
                 sentences = f.readlines()
-                for i in range(len(sentences)/3):
-                    content, target, rating = sentences[i*3].strip(), sentences[i*3+1].strip(), sentences[i*3+2].strip()
+                for i in range(len(sentences) / 3):
+                    content, target, rating = sentences[i * 3].strip(), sentences[i * 3 + 1].strip(), sentences[
+                        i * 3 + 2].strip()
                     sentence = Sentence(content, target, rating, grained)
                     data.append(sentence)
             self.origin[fname] = data
@@ -45,6 +52,7 @@ class DataManager(object):
 
     def gen_word(self):
         wordcount = {}
+
         def sta(sentence):
             for word in sentence.content.split(' '):
                 try:
@@ -61,8 +69,8 @@ class DataManager(object):
             for sent in self.origin[fname]:
                 sta(sent)
         words = wordcount.items()
-        words.sort(key=lambda x:x[1], reverse=True)
-        self.wordlist = {item[0]:index+1 for index, item in enumerate(words)}
+        words.sort(key=lambda x: x[1], reverse=True)
+        self.wordlist = {item[0]: index + 1 for index, item in enumerate(words)}
         return self.wordlist
 
     def gen_target(self, threshold=5):
@@ -74,14 +82,14 @@ class DataManager(object):
                 else:
                     self.dict_target[sent.target] = 1
         i = 0
-        for (key,val) in self.dict_target.items():
+        for (key, val) in self.dict_target.items():
             if val < threshold:
                 self.dict_target[key] = 0
             else:
                 self.dict_target[key] = i
                 i = i + 1
         return self.dict_target
-    
+
     def gen_data(self, grained=3):
         self.data = {}
         for fname in self.fileList:
@@ -98,5 +106,5 @@ class DataManager(object):
                 tmp = line.strip().split(' ', 1)
                 if mdict.has_key(tmp[0]):
                     list_seledted.append(line.strip())
-        list_seledted[0] = str(len(list_seledted)-1) + ' ' + str(len(line.strip().split())-1)
+        list_seledted[0] = str(len(list_seledted) - 1) + ' ' + str(len(line.strip().split()) - 1)
         open(save_vec_file_path, 'w').write('\n'.join(list_seledted))

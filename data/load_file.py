@@ -22,6 +22,7 @@ def append_dict(corpus, sent_list, pola, keyword):
         }
         corpus.append(dict0)
 
+
 if __name__ == '__main__':
     corpus = []
     food_pos = cut_sent_list(open(get_corpus_path('food_pos.txt')).readlines())

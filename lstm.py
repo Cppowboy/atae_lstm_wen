@@ -9,11 +9,12 @@ import time
 import collections
 from WordLoader import WordLoader
 
+
 class AttentionLstm(object):
     def __init__(self, wordlist, argv, aspect_num=0):
         parser = argparse.ArgumentParser()
         parser.add_argument('--name', type=str, default='lstm')
-        parser.add_argument('--rseed', type=int, default=int(1000*time.time()) % 19491001)
+        parser.add_argument('--rseed', type=int, default=int(1000 * time.time()) % 19491001)
         parser.add_argument('--dim_word', type=int, default=300)
         parser.add_argument('--dim_hidden', type=int, default=300)
         parser.add_argument('--dim_aspect', type=int, default=300)
@@ -23,14 +24,14 @@ class AttentionLstm(object):
         parser.add_argument('--attention', type=int, default=0, choices=[0])
         parser.add_argument('--aspect', type=int, default=0, choices=[0])
         parser.add_argument('--word_vector', type=str, default='data/glove.840B.300d.txt')
-        args, _ = parser.parse_known_args(argv)        
+        args, _ = parser.parse_known_args(argv)
 
         self.name = args.name
         logging.info('Model init: %s' % self.name)
-        
+
         self.srng = RandomStreams(seed=args.rseed)
         logging.info('RandomStream seed %d' % args.rseed)
-        
+
         self.dim_word, self.dim_hidden = args.dim_word, args.dim_hidden
         self.dim_aspect = args.dim_aspect
 
@@ -57,14 +58,14 @@ class AttentionLstm(object):
         self.load_word_vector(args.word_vector, wordlist)
         # self.load_word_information([args.negative_word, args.sentiment_word], wordlist)
         self.init_function()
-    
+
     def init_param(self):
         def shared_matrix(dim, name, u=0, b=0):
             matrix = self.srng.uniform(dim, low=-u, high=u, dtype=theano.config.floatX) + b
             f = theano.function([], matrix)
             return theano.shared(f(), name=name)
 
-        u = lambda x : 1 / np.sqrt(x)
+        u = lambda x: 1 / np.sqrt(x)
 
         dimc, dimh, dima = self.dim_word, self.dim_hidden, self.dim_aspect
         dim_lstm_para = dimh + dimc
@@ -74,27 +75,28 @@ class AttentionLstm(object):
         self.Wo = shared_matrix((dimh, dim_lstm_para), 'Wo', u(dimh))
         self.Wf = shared_matrix((dimh, dim_lstm_para), 'Wf', u(dimh))
         self.Wc = shared_matrix((dimh, dim_lstm_para), 'Wc', u(dimh))
-        self.bi = shared_matrix((dimh, ), 'bi', 0.)
-        self.bo = shared_matrix((dimh, ), 'bo', 0.)
-        self.bf = shared_matrix((dimh, ), 'bf', 0.)
-        self.bc = shared_matrix((dimh, ), 'bc', 0.)
+        self.bi = shared_matrix((dimh,), 'bi', 0.)
+        self.bo = shared_matrix((dimh,), 'bo', 0.)
+        self.bf = shared_matrix((dimh,), 'bf', 0.)
+        self.bc = shared_matrix((dimh,), 'bc', 0.)
         self.Ws = shared_matrix((dimh, self.grained), 'Ws', u(dimh))
-        self.bs = shared_matrix((self.grained, ), 'bs', 0.)
+        self.bs = shared_matrix((self.grained,), 'bs', 0.)
         self.h0, self.c0 = np.zeros(dimh, dtype=theano.config.floatX), np.zeros(dimh, dtype=theano.config.floatX)
-        self.params = [self.Vw, self.Wi, self.Wo, self.Wf, self.Wc, self.bi, self.bo, self.bf, self.bc, self.Ws, self.bs]
+        self.params = [self.Vw, self.Wi, self.Wo, self.Wf, self.Wc, self.bi, self.bo, self.bf, self.bc, self.Ws,
+                       self.bs]
 
     def init_function(self):
         sigmoid, tanh = T.nnet.sigmoid, T.tanh
         logging.info('init function...')
 
-        self.seq_idx = T.lvector() 
+        self.seq_idx = T.lvector()
         self.solution = T.matrix()
         self.seq_matrix = T.take(self.Vw, self.seq_idx, axis=0)
 
         h, c = T.zeros_like(self.bf, dtype=theano.config.floatX), T.zeros_like(self.bc, dtype=theano.config.floatX)
 
         def encode(x_t, h_fore, c_fore):
-            v = T.concatenate([h_fore, x_t])            
+            v = T.concatenate([h_fore, x_t])
             f_t = T.nnet.sigmoid(T.dot(self.Wf, v) + self.bf)
             i_t = T.nnet.sigmoid(T.dot(self.Wi, v) + self.bi)
             o_t = T.nnet.sigmoid(T.dot(self.Wo, v) + self.bo)
@@ -108,16 +110,16 @@ class AttentionLstm(object):
         self.use_noise = theano.shared(np.asarray(0., dtype=theano.config.floatX))
 
         if self.dropout == 1:
-            embedding_for_train = embedding * self.srng.binomial(embedding.shape, p = 0.5, n = 1, dtype=embedding.dtype)
+            embedding_for_train = embedding * self.srng.binomial(embedding.shape, p=0.5, n=1, dtype=embedding.dtype)
             embedding_for_test = embedding * 0.5
         else:
             embedding_for_train = embedding
             embedding_for_test = embedding
-            
+
         self.pred_for_train = T.nnet.softmax(T.dot(embedding_for_train, self.Ws) + self.bs)
         self.pred_for_test = T.nnet.softmax(T.dot(embedding_for_test, self.Ws) + self.bs)
 
-        self.l2 = sum([T.sum(param**2) for param in self.params]) - T.sum(self.Vw**2)
+        self.l2 = sum([T.sum(param ** 2) for param in self.params]) - T.sum(self.Vw ** 2)
         self.loss_sen = -T.tensordot(self.solution, T.log(self.pred_for_train), axes=2)
         self.loss_l2 = 0.5 * self.l2 * self.regular
         self.loss = self.loss_sen + self.loss_l2
@@ -128,30 +130,30 @@ class AttentionLstm(object):
         self.grad = {}
         for param, grad in zip(self.params, grads):
             g = theano.shared(np.asarray(np.zeros_like(param.get_value()), \
-                    dtype=theano.config.floatX))
+                                         dtype=theano.config.floatX))
             self.grad[param] = g
             self.updates[g] = g + grad
 
         logging.info("compiling func of train...")
         self.func_train = theano.function(
-                inputs = [self.seq_idx, self.solution, theano.In(h, value=self.h0), theano.In(c, value=self.c0)],
-                outputs = [self.loss, self.loss_sen, self.loss_l2],
-                updates = self.updates,
-                on_unused_input='warn')
+            inputs=[self.seq_idx, self.solution, theano.In(h, value=self.h0), theano.In(c, value=self.c0)],
+            outputs=[self.loss, self.loss_sen, self.loss_l2],
+            updates=self.updates,
+            on_unused_input='warn')
         logging.info("compiling func of test...")
         self.func_test = theano.function(
-                inputs = [self.seq_idx, theano.In(h, value=self.h0), theano.In(c, value=self.c0)],
-                outputs = self.pred_for_test,
-                on_unused_input='warn')
+            inputs=[self.seq_idx, theano.In(h, value=self.h0), theano.In(c, value=self.c0)],
+            outputs=self.pred_for_test,
+            on_unused_input='warn')
         self.func_encode = theano.function(
-                inputs = [self.seq_idx, theano.In(h, value=self.h0), theano.In(c, value=self.c0)],
-                outputs = embedding,
-                on_unused_input='warn')
+            inputs=[self.seq_idx, theano.In(h, value=self.h0), theano.In(c, value=self.c0)],
+            outputs=embedding,
+            on_unused_input='warn')
         # self.func_info = theano.function(
         #         inputs = [self.nodes, self.edges],
         #         outputs = sentiment_ratio,
         #         on_unused_input='warn')
-    
+
     def load_word_vector(self, fname, wordlist):
         logging.info('loading word vectors...')
         loader = WordLoader()
@@ -166,7 +168,7 @@ class AttentionLstm(object):
                 not_found += 1
         self.Vw.set_value(Vw)
         logging.info('word vectors: %s words not found.' % not_found)
-    
+
     def load_word_information(self, fnamelist, wordlist):
         logging.info('loading word information...')
         loader = WordLoader();

@@ -2,6 +2,7 @@ from sklearn.metrics import confusion_matrix
 import numpy as np
 import logging
 
+
 class Evaluator2(object):
     def __init__(self, verbose=True):
         self.verbose = verbose
@@ -40,6 +41,7 @@ class Evaluator2(object):
         if self.verbose:
             logging.info('Cm2:\n%s' % self.cm2)
         return ret
+
 
 class Evaluator3(object):
     def __init__(self, verbose=True):
@@ -97,5 +99,6 @@ class Evaluator3(object):
             logging.info('Cm3:\n%s' % self.cm3)
             logging.info('Cm2:\n%s' % self.cm2)
         return ret
+
 
 Evaluators = {2: Evaluator2, 3: Evaluator3}

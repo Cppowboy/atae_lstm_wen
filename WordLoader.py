@@ -1,6 +1,7 @@
 import numpy as np
 from numpy import dtype, fromstring, float32 as REAL
 
+
 class WordLoader(object):
     def load_word_vector(self, fname, wordlist, dim, binary=None):
         if binary == None:
@@ -14,7 +15,7 @@ class WordLoader(object):
         vocab = {}
         with open(fname) as fin:
             header = fin.readline()
-            vocab_size, vec_size = map(int, header.split())  
+            vocab_size, vec_size = map(int, header.split())
             if binary:
                 binary_len = dtype(REAL).itemsize * vec_size
                 for line_no in xrange(vocab_size):
